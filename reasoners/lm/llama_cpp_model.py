@@ -111,8 +111,8 @@ class LlamaCppModel(LanguageModel):
         output = []
         for content in contents:
             content_tokens = self.tokenize(content, add_bos=True)
-            if any(p != c for p, c in zip(prefix_tokens, content_tokens)):
-                warnings.warn(f'prefix {repr(prefix)} does not match content {repr(content)}')
+            # if any(p != c for p, c in zip(prefix_tokens, content_tokens)):
+            #     warnings.warn(f'prefix {repr(prefix)} does not match content {repr(content)}')
             self.llama.reset()
             self.llama.eval(content_tokens)
             logits = self.llama.eval_logits

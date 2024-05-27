@@ -48,7 +48,8 @@ def instance_to_text_blocksworld(problem, get_plan, data, plan_code="", shuffle=
         for action in plan:
             action = action.strip("(").strip(")")
             act_name, objs = action.split(" ")[0], action.split(" ")[1:]
-            objs = [OBJS[obj] for obj in objs]
+            # objs = [OBJS[obj] for obj in objs]
+            objs = [obj + ' block' for obj in objs]
             PLAN += data['actions'][act_name].format(*objs) + "\n"
         PLAN += "[PLAN END]\n"
 
