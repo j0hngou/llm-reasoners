@@ -14,6 +14,7 @@ import numpy as np
 from tqdm import trange
 
 from .. import SearchAlgorithm, WorldModel, SearchConfig, State, Action, Example, Trace
+import time
 
 
 class MCTSNode(Generic[State, Action, Example]):
@@ -159,7 +160,8 @@ class MCTS(SearchAlgorithm, Generic[State, Action, Example]):
                  uct_with_fast_reward: bool = True,
                  aggregator: Optional[MCTSAggregation] = None,
                  disable_tqdm: bool = True,
-                 node_visualizer: Callable[[MCTSNode], dict] = lambda x: x.__dict__):
+                 node_visualizer: Callable[[MCTSNode], dict] = lambda x: x.__dict__,
+                 parallel_actions: bool = False):
         """
         MCTS algorithm
 
@@ -181,6 +183,7 @@ class MCTS(SearchAlgorithm, Generic[State, Action, Example]):
                                      Otherwise, visit the *unvisited* children with maximum fast_reward first
         """
         super().__init__()
+        print(f"w_exp: {w_exp}")
         self.world_model = None
         self.search_config = None
         self.output_trace_in_each_iter = output_trace_in_each_iter
@@ -209,6 +212,7 @@ class MCTS(SearchAlgorithm, Generic[State, Action, Example]):
         self.aggregator = aggregator
         self.node_visualizer = node_visualizer
         self.aggregator = aggregator
+        self.parallel_actions = parallel_actions
 
     def iterate(self, node: MCTSNode) -> list[MCTSNode]:
         path = self._select(node)
@@ -235,18 +239,25 @@ class MCTS(SearchAlgorithm, Generic[State, Action, Example]):
         while True:
             path.append(node)
             if node.children is None or len(node.children) == 0 or self._is_terminal_with_depth_limit(node):
+                print(f"Path selected: {[n.state.description if node.state else None for n in path]}")
+
                 return path
             node = self._uct_select(node)
+            print(f"Selected node: {node.state.description if node.state else None} with UCT: {self._uct(node)}")
 
     def _uct(self, node: MCTSNode) -> float:
+        print(f"Calculating UCT for node {node.state.description if node.state else None}")
+        print(f"Q: {node.Q}, w_exp: {self.w_exp}, np.sqrl: {np.sqrt(np.log(len(node.parent.cum_rewards)) / max(1, len(node.cum_rewards)))}")
         return node.Q + self.w_exp * np.sqrt(np.log(len(node.parent.cum_rewards)) / max(1, len(node.cum_rewards)))
 
     def _uct_select(self, node: MCTSNode) -> MCTSNode:
         if self.uct_with_fast_reward or all(x.state is not None for x in node.children):
-            return max(node.children, key=self._uct)
+            selected_child = max(node.children, key=self._uct)
         else:
             unvisited_children = filter(lambda x: x.state is None, node.children)
-            return max(unvisited_children, key=lambda x: x.fast_reward)
+            selected_child = max(unvisited_children, key=lambda x: x.fast_reward)
+        print(f"Selecting child: {selected_child.state.description if selected_child.state else None} with UCT: {self._uct(selected_child)}")
+        return selected_child
 
     def _expand(self, node: MCTSNode):
         if node.state is None:
@@ -263,12 +274,37 @@ class MCTS(SearchAlgorithm, Generic[State, Action, Example]):
 
         children = []
         actions = self.search_config.get_actions(node.state)
-        for action in actions:
-            fast_reward, fast_reward_details = self.search_config.fast_reward(node.state, action)
-            child = MCTSNode(state=None, action=action, parent=node,
-                             fast_reward=fast_reward, fast_reward_details=fast_reward_details, calc_q=self.calc_q)
-            children.append(child)
-
+        if self.parallel_actions:
+            # Time the execution
+            start = time.time()
+            results = self.search_config.fast_rewards(node.state, actions)
+            fast_rewards = [result[0] for result in results]
+            fast_reward_details = [result[1] for result in results]
+            for action, fast_reward, fast_reward_detail in zip(actions, fast_rewards, fast_reward_details):
+                child = MCTSNode(state=None, action=action, parent=node,
+                                 fast_reward=fast_reward, fast_reward_details=fast_reward_detail, calc_q=self.calc_q)
+                children.append(child)
+            print(f"Time taken to expand with {'parallel' if self.parallel_actions else 'sequential'} actions: {time.time() - start}")
+            start = time.time()
+            for action in actions:
+                # Time the execution
+                print(f"Tracing action {action} at depth {node.depth} in node {node.state.description}")
+                fast_reward, fast_reward_details = self.search_config.fast_reward(node.state, action)
+                child = MCTSNode(state=None, action=action, parent=node,
+                                fast_reward=fast_reward, fast_reward_details=fast_reward_details, calc_q=self.calc_q)
+                children.append(child)
+            print(f"Time taken to expand with sequential actions: {time.time() - start}")
+        else:
+            # start = time.time()
+            for action in actions:
+                # Time the execution
+                print(f"Tracing action {action} at depth {node.depth} in node {node.state.description}")
+                fast_reward, fast_reward_details = self.search_config.fast_reward(node.state, action)
+                child = MCTSNode(state=None, action=action, parent=node,
+                                fast_reward=fast_reward, fast_reward_details=fast_reward_details, calc_q=self.calc_q)
+                children.append(child)
+                
+        # print(f"Time taken to expand with {'parallel' if self.parallel_actions else 'sequential'} actions: {time.time() - start}")
         node.children = children
 
     def _simulate(self, path: list[MCTSNode]):

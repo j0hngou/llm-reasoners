@@ -110,11 +110,12 @@ def generate_actions(cur_state, entities, action_types, can_move_car):
                 # actions.append(f"You moved the {entity.replace('obstacle', obstacle_type)}")
                 pass
         elif 'vehicle' in entity:
-            if can_move_car and 'move' in action_types:
-                # Check if the corresponding traffic light state allows movement
-                corresponding_trafficlight = vehicle_to_trafficlight[entity]
-                if state_dict.get(corresponding_trafficlight) == 1.00:
-                    actions.append(f"You moved the {entity}.")
+            # if can_move_car and 'move' in action_types:
+            #     # Check if the corresponding traffic light state allows movement
+            #     corresponding_trafficlight = vehicle_to_trafficlight[entity]
+            #     if state_dict.get(corresponding_trafficlight) == 1.00:
+            #         actions.append(f"You moved the {entity}.")
+                pass
     actions.append("You performed no action.")
 
     return actions

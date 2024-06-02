@@ -122,6 +122,28 @@ class LlamaCppModel(LanguageModel):
             output.append(sum(content_log_probs))
         return np.array(output)
 
+    def get_loglikelihood2(self, prefix: str, contents: list[str], **kwargs) -> np.ndarray:
+        prefix_tokens = self.tokenize(prefix, add_bos=True)
+        output = []
+
+        self.llama.reset()
+        self.llama.eval2(prefix_tokens, clear_kv_cache=True)
+        prefix_len = len(prefix_tokens)
+
+        for content in contents:
+            content_tokens = self.tokenize(content, add_bos=True)
+            # combined_tokens = prefix_tokens + content_tokens[prefix_len:]
+
+            self.llama.eval2(content_tokens[prefix_len:], clear_kv_cache=False)
+            logits = self.llama.eval_logits
+            log_probs = scipy.special.log_softmax(logits, axis=-1)
+            content_log_probs = log_probs[np.arange(prefix_len, len(content_tokens)) - 1, content_tokens[prefix_len:]]
+            output.append(sum(content_log_probs))
+
+            self.llama.n_tokens -= len(content_tokens[prefix_len:])
+
+        return np.array(output)
+
     def tokenize(self, text: str, add_bos=True):
         return self.llama.tokenize(bytes(text, encoding='utf-8'), add_bos=add_bos)
 

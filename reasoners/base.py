@@ -200,6 +200,8 @@ class Evaluator():
         
             with open(os.path.join(log_dir, 'args.txt'), 'w') as f:
                 print(sys.argv, file=f)
+        self.log_dir = log_dir
+        print(self.log_dir)
 
         correct_count = 0
 
