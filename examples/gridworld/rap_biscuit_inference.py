@@ -100,12 +100,14 @@ def rap_biscuit(base_model: LanguageModel,
               autoencoder_path: str = None,
               device='cuda',
               config_file: str = "/home/john/PhD/BISCUIT/data_generation/data/gridworld_simplified_3c1b3l_noturn_noshufflecars_f/val_metadata.json",
-              data_path : str = "/home/john/PhD/BISCUIT/llm-reasoners/examples/gridworld/data/step_2.pth",
+              data_path : str = "/home/john/PhD/BISCUIT/llm-reasoners/examples/gridworld/data/step_4.pth",
               n_iters: int = 30,
               **search_algo_params):
 
-    wandb.init(project='gridworld_mcts', name=f'{search_algo.__name__}_depth_{depth_limit}_data_{data_path.split("/")[-1]}-w_exp_{search_algo_params["w_exp"]}')
-    search_algo_params |= {'cum_reward': cum_reward, 'calc_q': calc_q, 'disable_tqdm': disable_tqdm, 'depth_limit': depth_limit, 'n_iters': 30, "parallel_actions": False}
+    # wandb.init(project='gridworld_mcts', name=f'{search_algo.__name__}_depth_{depth_limit}_data_{data_path.split("/")[-1]}-w_exp_{search_algo_params["w_exp"]}')
+    run = wandb.init(entity='orpheous1', project='llm-reasoners-examples_gridworld', id='ijnpa841', resume='must')
+    run.mark_preempting()
+    search_algo_params |= {'cum_reward': cum_reward, 'calc_q': calc_q, 'disable_tqdm': disable_tqdm, 'depth_limit': depth_limit, 'n_iters': 20, "parallel_actions": False}
     crl_model, causal_mapper, nl_model, tokenizer = utils.load_models(crl_model_path, autoencoder_path, causal_mapper_path, tokenizer_path, nl_model_path, device=device)
     world_model = CausalWorldModel(crl_model=crl_model, causal_mapper=causal_mapper, nl_model=nl_model, tokenizer=tokenizer, device=device, max_steps=depth_limit, config_file=config_file)
     config = GWConfig(base_model=base_model, prompt=prompt, batch_size=batch_size,
@@ -153,7 +155,7 @@ if __name__ == '__main__':
              exllamav2_lora_dir: Optional[str] = None,
              exllamav2_mem_map: Optional[str] = None,
              batch_size: int = 1,
-             prompt: str = '/home/john/PhD/BISCUIT/llm-reasoners/examples/gridworld/prompts/prompt_2step.json',
+             prompt: str = '/home/john/PhD/BISCUIT/llm-reasoners/examples/gridworld/prompts/prompt_4step.json',
              disable_log: bool = False,
              disable_tqdm: bool = False,
              **kwargs):
